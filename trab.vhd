@@ -49,7 +49,10 @@ begin
                 all_senhas <= (others => "00000000");
                 is_match <= false;
             elsif config = '1' then
+                selected_index <= '1';
                 if add_user = '1' then
+                    selected_index <= '2';
+
                     -- Adiciona uma nova senha ao array user_senhas
                     for i in 0 to 5 loop
                         if user_senhas(i) = "00000000" then
@@ -58,8 +61,13 @@ begin
                             exit; -- Sai do loop após adicionar a senha
                         end if;
                     end loop;
+                else
+                selected_index <= '4';
+                -- logica par aremover a senha
+                -- selected_index <= '5';
                 end if;
             else
+                selected_index <= '6';
                 -- Concatena os arrays admin_senhas e user_senhas
                 for i in 0 to 1 loop
                     all_senhas(i) <= admin_senhas(i);
