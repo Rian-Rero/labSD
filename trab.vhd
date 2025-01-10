@@ -5,7 +5,7 @@ use IEEE.STD_LOGIC_UNSIGNED.ALL;
 
 entity smartLocker is 
     Port(
-        clock, reset, config, add_user : in STD_LOGIC;
+        clock, reset, config, add_user, remove_user : in STD_LOGIC;
         pass: in STD_LOGIC_VECTOR (7 downto 0);
         admin_led, valid_led, error_led, registered: out STD_LOGIC
     );
@@ -31,14 +31,15 @@ architecture Behavioral of smartLocker is
     signal all_senhas : senha_array := (others => "00000000");
 
     signal is_match : boolean := false; -- Sinal para indicar que a senha foi encontrada
-    signal selected_index : integer range 0 to 11 := 0;
+    signal selected_index : integer range 0 to 7 := 0; 
 
 begin
     process(clock, reset)
     begin
         if rising_edge(clock) then
             if reset = '1' then
-                selected_index <= 0;
+                
+                selected_index <= 0; --init
                 admin_led <= '0';
                 valid_led <= '0';
                 error_led <= '0';
@@ -48,10 +49,10 @@ begin
                 user_senhas <= (others => "00000000");
                 all_senhas <= (others => "00000000");
                 is_match <= false;
+
             elsif config = '1' then
-                selected_index <= '1';
-                if add_user = '1' then
-                    selected_index <= '2';
+                if add_user = '1' then --add
+                    selected_index <= 5;
 
                     -- Adiciona uma nova senha ao array user_senhas
                     for i in 0 to 5 loop
@@ -61,18 +62,30 @@ begin
                             exit; -- Sai do loop após adicionar a senha
                         end if;
                     end loop;
-                else
-                selected_index <= '4';
-                -- logica par aremover a senha
-                -- selected_index <= '5';
+
+                
+                elsif remove_user = '1' then --remove
+                    selected_index <= 6;
+
+                    -- Remove a senha correspondente no array user_senhas
+                    for i in 0 to 5 loop
+                        if user_senhas(i) = pass then
+                            user_senhas(i) <= "00000000";
+                            registered <= '0';
+                            exit; -- Sai do loop após remover a senha
+                        end if;
+                    end loop;
                 end if;
+
             else
-                selected_index <= '6';
+            
+                selected_index <= 1;  --eva_pass
+
                 -- Concatena os arrays admin_senhas e user_senhas
                 for i in 0 to 1 loop
                     all_senhas(i) <= admin_senhas(i);
                 end loop;
-                for i in 0 to 3 loop
+                for i in 0 to 5 loop
                     all_senhas(i + 2) <= user_senhas(i);
                 end loop;
 
@@ -81,19 +94,41 @@ begin
                 error_led <= '1';
                 is_match <= false;
 
-                for j in 0 to 2 loop
-                    exit when is_match; -- Sai do loop externo se a senha foi encontrada
-                    for i in 0 to 5 loop
+                for j in 0 to 2 loop 
+                    exit when is_match;
+                    for i in 0 to 7 loop
                         if pass = all_senhas(i) then
-                            valid_led <= '1';
-                            error_led <= '0';
-                            is_match <= true; -- Indica que a senha foi encontrada
-                            exit; -- Sai do loop interno
+                            is_match <= true;
+                            exit; -- Sai do loop se a senha for encontrada
                         end if;
                     end loop;
                 end loop;
 
-                selected_index <= 10;
+                if is_match then
+                    selected_index <= 2; --sucess
+                    valid_led <= '1';
+                    error_led <= '0';
+
+                else
+                    selected_index <= 4; --blocked
+                    valid_led <= '0';
+                    error_led <= '1';
+                end if;
+
+                if selected_index = 2 then
+                    selected_index <= 3; --opened
+                    valid_led <= '1';
+                end if;
+
+                if selected_index = 6 then
+                    selected_index <= 7; --sucess
+                    registered <= '1';
+                end if;
+
+                if selected_index = 5 then
+                    selected_index <= 7; --sucess
+                    registered <= '1';
+                end if;
             end if;
         end if;
     end process;
