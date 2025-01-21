@@ -132,4 +132,20 @@ begin
         end if;
     end process;
 
+    process(selected_index)
+    begin
+        case selected_index is
+            when 0 => -- Initial
+            when 1 => --
+            when 2 => --
+            when 3 => --
+            when 4 => --
+            when 5 => --
+            when 6 => --
+            when 7 => --
+            when 8 => --
+            when 9 => --
+            
+            
+
 end Behavioral;
