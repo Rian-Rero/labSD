@@ -5,7 +5,7 @@ use IEEE.STD_LOGIC_UNSIGNED.ALL;
 
 entity smartLocker is 
     Port(
-        clock, reset, config, add_user, remove_user : in STD_LOGIC;
+        clock, reset, config, add_user : in STD_LOGIC;
         pass: in STD_LOGIC_VECTOR (7 downto 0);
         admin_led, valid_led, error_led, registered: out STD_LOGIC
     );
@@ -46,7 +46,6 @@ begin
                 registered <= '0';
 
                 -- Inicializa os arrays
-                user_senhas <= (others => "00000000");
                 all_senhas <= (others => "00000000");
                 is_match <= false;
 
@@ -64,7 +63,7 @@ begin
                     end loop;
 
                 
-                elsif remove_user = '1' then --remove
+                elsif add_user = '0' then --remove
                     selected_index <= 6;
 
                     -- Remove a senha correspondente no array user_senhas

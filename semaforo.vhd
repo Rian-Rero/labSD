@@ -1,15 +1,14 @@
-
 library ieee;
 use ieee.std_logic_1164.all;
 
 entity semaforo is
     port (
         CLOCK       : in    std_logic;
-        z, p        : in    std_logic;
+        z, p, resetar        : in    std_logic;
         verde1, vermelho1, amarelo1,
         pdverde1, pdvermelho1,
         verde2, vermelho2, amarelo2,
-        pdverde2, pdvermelho2 : out std_logic
+        pdverde2, pdvermelho2, debug : out std_logic
     );
 end semaforo;
 
@@ -19,11 +18,17 @@ begin
 
     process (CLOCK)
     begin
-        if rising_edge(CLOCK) then
+        if resetar = '1' then
+            selected_index <= 0;
+        elsif rising_edge(CLOCK) then
             if z = '1' or p = '1' then
+                debug <= '1';
                 selected_index <= 1;
-            else
-                selected_index <= (selected_index + 1) mod 12;
+            elsif selected_index = 11 then
+                selected_index <= 0;
+            elsif selected_index /= 0 then
+                debug <= '0';
+                selected_index <= selected_index + 1;
             end if;
         end if;
     end process;
@@ -49,7 +54,7 @@ begin
                 amarelo2 <= '1'; vermelho1 <= '1';
                 pdvermelho2 <= '1'; pdverde1 <= '1';
             when others =>
-                null;
+                null; -- Opcional
         end case;
     end process;
 
