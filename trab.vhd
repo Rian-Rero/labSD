@@ -14,6 +14,8 @@ end smartLocker;
 architecture Behavioral of smartLocker is 
     -- Tipo para os arrays de senhas
     type senha_array is array (0 to 5) of STD_LOGIC_VECTOR(7 downto 0);
+     type users_senha_array is array (0 to 3) of STD_LOGIC_VECTOR(7 downto 0);
+
 
     -- Array de senhas de administradores
     constant admin_senhas : senha_array := (
@@ -23,7 +25,7 @@ architecture Behavioral of smartLocker is
     );
 
     -- Array para as senhas de usuários
-    signal user_senhas : senha_array := (
+    signal user_senhas : users_senha_array := (
         others => "00000000" -- Inicializa com valores padrão
     );
 
@@ -54,7 +56,7 @@ begin
                     selected_index <= 5;
 
                     -- Adiciona uma nova senha ao array user_senhas
-                    for i in 0 to 5 loop
+                    for i in 0 to 3 loop
                         if user_senhas(i) = "00000000" then
                             user_senhas(i) <= pass;
                             registered <= '1';
@@ -67,7 +69,7 @@ begin
                     selected_index <= 6;
 
                     -- Remove a senha correspondente no array user_senhas
-                    for i in 0 to 5 loop
+                    for i in 0 to 3 loop
                         if user_senhas(i) = pass then
                             user_senhas(i) <= "00000000";
                             registered <= '0';
@@ -84,7 +86,7 @@ begin
                 for i in 0 to 1 loop
                     all_senhas(i) <= admin_senhas(i);
                 end loop;
-                for i in 0 to 5 loop
+                for i in 0 to 3 loop
                     all_senhas(i + 2) <= user_senhas(i);
                 end loop;
 
@@ -95,7 +97,7 @@ begin
 
                 for j in 0 to 2 loop 
                     exit when is_match;
-                    for i in 0 to 7 loop
+                    for i in 0 to 5 loop
                         if pass = all_senhas(i) then
                             is_match <= true;
                             exit; -- Sai do loop se a senha for encontrada
@@ -131,19 +133,5 @@ begin
             end if;
         end if;
     end process;
-
-    process(selected_index)
-    begin
-        case selected_index is
-            when 0 => -- Initial
-            when 1 => -- Evaluate Passaword
-            when 2 => -- Success Opened
-            when 3 => -- Opened
-            when 4 => -- Blocked
-            when 5 => -- Add User
-            when 6 => -- Remove User
-            when 7 => -- Success User
-            
-            
 
 end Behavioral;
