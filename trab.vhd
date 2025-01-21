@@ -136,15 +136,13 @@ begin
     begin
         case selected_index is
             when 0 => -- Initial
-            when 1 => --
-            when 2 => --
-            when 3 => --
-            when 4 => --
-            when 5 => --
-            when 6 => --
-            when 7 => --
-            when 8 => --
-            when 9 => --
+            when 1 => -- Evaluate Passaword
+            when 2 => -- Success Opened
+            when 3 => -- Opened
+            when 4 => -- Blocked
+            when 5 => -- Add User
+            when 6 => -- Remove User
+            when 7 => -- Success User
             
             
 
