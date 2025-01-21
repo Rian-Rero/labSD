@@ -7,14 +7,14 @@ entity smartLocker is
     Port(
         clock, reset, config, add_user : in STD_LOGIC;
         pass: in STD_LOGIC_VECTOR (7 downto 0);
-        admin_led, valid_led, error_led, registered: out STD_LOGIC
+        admin_led, valid_led, error_led, registered, isLogged: out STD_LOGIC
     );
 end smartLocker;
 
 architecture Behavioral of smartLocker is 
     -- Tipo para os arrays de senhas
     type senha_array is array (0 to 5) of STD_LOGIC_VECTOR(7 downto 0);
-     type users_senha_array is array (0 to 3) of STD_LOGIC_VECTOR(7 downto 0);
+    type users_senha_array is array (0 to 3) of STD_LOGIC_VECTOR(7 downto 0);
 
 
     -- Array de senhas de administradores
@@ -34,6 +34,7 @@ architecture Behavioral of smartLocker is
 
     signal is_match : boolean := false; -- Sinal para indicar que a senha foi encontrada
     signal selected_index : integer range 0 to 7 := 0; 
+    
 
 begin
     process(clock, reset)
@@ -92,7 +93,6 @@ begin
 
                 -- Verifica se a senha de entrada é válida
                 valid_led <= '0';
-                error_led <= '1';
                 is_match <= false;
 
                 for j in 0 to 2 loop 
@@ -137,12 +137,13 @@ begin
     process(selected_index)
     begin
         case selected_index is
-            when 0 => registered <= '0'; admin_led <= '0'; valid_led <='0'; error_led <= '0';
-            when 1 => registered <= '0'; admin_led <= '0'; valid_led <='0'; error_led <= '0';
-            when 2 => registered <= '0'; admin_led <= '0'; valid_led <='1'; error_led <= '0';
-            when 3 => registered <= '0'; admin_led <= '0'; valid_led <='1'; error_led <= '0';
-            when 4 => registered <= '0'; admin_led <= '0'; valid_led <='0'; error_led <= '1';
-            when 5 => registered <= '0'; admin_led <= '1'; valid_led <='1'; error_led <= '0';
-            when 6 => registered <= '0'; admin_led <= '1'; valid_led <='1'; error_led <= '0';
-            when 7 => registered <= '1'; admin_led <= '1'; valid_led <='1'; error_led <= '0';
+            when 0 => registered <= '0'; admin_led <= '0'; valid_led <='0'; error_led <= '0'; -- Init
+            when 1 => registered <= '0'; admin_led <= '0'; valid_led <='0'; error_led <= '0'; -- Evaluate PassWord 
+            when 2 => registered <= '0'; admin_led <= '0'; valid_led <='1'; error_led <= '0'; -- Sucess Open
+            when 3 => registered <= '0'; admin_led <= '0'; valid_led <='1'; error_led <= '0'; -- Opened
+            when 4 => registered <= '0'; admin_led <= '0'; valid_led <='0'; error_led <= '1'; -- Blocked
+            when 5 => registered <= '0'; admin_led <= '1'; valid_led <='1'; error_led <= '0'; isLogged <= 1; -- Add Uuser
+            when 6 => registered <= '0'; admin_led <= '1'; valid_led <='1'; error_led <= '0'; isLogged <= 1; -- Remove User
+            when 7 => registered <= '1'; admin_led <= '1'; valid_led <='1'; error_led <= '0'; isLogged <= 1; -- Success Config
+            when others => null;
 end Behavioral;
