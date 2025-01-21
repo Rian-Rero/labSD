@@ -134,4 +134,15 @@ begin
         end if;
     end process;
 
+    process(selected_index)
+    begin
+        case selected_index is
+            when 0 => registered <= '0'; admin_led <= '0'; valid_led <='0'; error_led <= '0';
+            when 1 => registered <= '0'; admin_led <= '0'; valid_led <='0'; error_led <= '0';
+            when 2 => registered <= '0'; admin_led <= '0'; valid_led <='1'; error_led <= '0';
+            when 3 => registered <= '0'; admin_led <= '0'; valid_led <='1'; error_led <= '0';
+            when 4 => registered <= '0'; admin_led <= '0'; valid_led <='0'; error_led <= '1';
+            when 5 => registered <= '0'; admin_led <= '1'; valid_led <='1'; error_led <= '0';
+            when 6 => registered <= '0'; admin_led <= '1'; valid_led <='1'; error_led <= '0';
+            when 7 => registered <= '1'; admin_led <= '1'; valid_led <='1'; error_led <= '0';
 end Behavioral;
