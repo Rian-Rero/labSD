@@ -34,6 +34,7 @@ architecture Behavioral of smartLocker is
 
     signal is_match : boolean := false; -- Sinal para indicar que a senha foi encontrada
     signal selected_index : integer range 0 to 7 := 0; 
+    signal is_admin_Logged : boolean := false;
     
 
 begin
@@ -47,103 +48,108 @@ begin
                 valid_led <= '0';
                 error_led <= '0';
                 registered <= '0';
+                isLogged <= '0';
 
                 -- Inicializa os arrays
                 all_senhas <= (others => "00000000");
                 is_match <= false;
+            end if;
 
-            elsif config = '1' then
-                if add_user = '1' then --add
-                    selected_index <= 5;
-
-                    -- Adiciona uma nova senha ao array user_senhas
-                    for i in 0 to 3 loop
-                        if user_senhas(i) = "00000000" then
-                            user_senhas(i) <= pass;
-                            registered <= '1';
-                            exit; -- Sai do loop após adicionar a senha
+            if selected_index = 0 then
+                if config = '1' then
+                    for i in 0 to 1 verifyAdmin: loop
+                        if pass = admin_senhas(i) then
+                            isLogged <= '1';
+                            is_admin_Logged <= true;
+                            exit verifyAdmin;
+                        else
+                            isLogged <= '0';
+                            error_led <= '1';
+                            selected_index <= 0;
+                            is_admin_Logged <= false;
                         end if;
-                    end loop;
+                    if is_admin_Logged then
+                        if add_user = '1' then --add
+                            selected_index <= 5;
 
-                
-                elsif add_user = '0' then --remove
-                    selected_index <= 6;
+                            -- Adiciona uma nova senha ao array user_senhas
+                            for i in 0 to 3 loop
+                                if user_senhas(i) = "00000000" then
+                                    user_senhas(i) <= pass;
+                                    registered <= '1';
+                                    selected_index <= 0;
+                                    exit; -- Sai do loop após adicionar a senha
+                                end if;
+                            end loop;
 
-                    -- Remove a senha correspondente no array user_senhas
-                    for i in 0 to 3 loop
-                        if user_senhas(i) = pass then
-                            user_senhas(i) <= "00000000";
-                            registered <= '0';
-                            exit; -- Sai do loop após remover a senha
+                        
+                        elsif add_user = '0' then --remove
+                            selected_index <= 6;
+
+                            -- Remove a senha correspondente no array user_senhas
+                            for i in 0 to 3 loop
+                                if user_senhas(i) = pass then
+                                    user_senhas(i) <= "00000000";
+                                    registered <= '0';
+                                    valid_led <= '1';
+                                    exit; -- Sai do loop após remover a senha
+                                end if;
+                            end loop;
                         end if;
-                    end loop;
-                end if;
-
-            else
-            
-                selected_index <= 1;  --eva_pass
-
-                -- Concatena os arrays admin_senhas e user_senhas
-                for i in 0 to 1 loop
-                    all_senhas(i) <= admin_senhas(i);
-                end loop;
-                for i in 0 to 3 loop
-                    all_senhas(i + 2) <= user_senhas(i);
-                end loop;
-
-                -- Verifica se a senha de entrada é válida
-                valid_led <= '0';
-                is_match <= false;
-
-                for j in 0 to 2 loop 
-                    exit when is_match;
-                    for i in 0 to 5 loop
-                        if pass = all_senhas(i) then
-                            is_match <= true;
-                            exit; -- Sai do loop se a senha for encontrada
-                        end if;
-                    end loop;
-                end loop;
-
-                if is_match then
-                    selected_index <= 2; --sucess
-                    valid_led <= '1';
-                    error_led <= '0';
+                    end if;
 
                 else
-                    selected_index <= 4; --blocked
+                
+                    selected_index <= 1;  --eva_pass
+
+                    -- Concatena os arrays admin_senhas e user_senhas
+                    for i in 0 to 1 loop
+                        all_senhas(i) <= admin_senhas(i);
+                    end loop;
+                    for i in 0 to 3 loop
+                        all_senhas(i + 2) <= user_senhas(i);
+                    end loop;
+
+                    -- Verifica se a senha de entrada é válida
                     valid_led <= '0';
-                    error_led <= '1';
-                end if;
+                    is_match <= false;
 
-                if selected_index = 2 then
-                    selected_index <= 3; --opened
-                    valid_led <= '1';
-                end if;
+                    for j in 0 to 2 loop 
+                        exit when is_match;
+                        for i in 0 to 5 loop
+                            if pass = all_senhas(i) then
+                                is_match <= true;
+                                exit; -- Sai do loop se a senha for encontrada
+                            end if;
+                        end loop;
+                    end loop;
 
-                if selected_index = 6 then
-                    selected_index <= 7; --sucess
-                    registered <= '1';
-                end if;
+                    if is_match then
+                        selected_index <= 2; --sucess
+                        valid_led <= '1';
+                        error_led <= '0';
 
-                if selected_index = 5 then
-                    selected_index <= 7; --sucess
-                    registered <= '1';
+                    else
+                        selected_index <= 4; --blocked
+                        valid_led <= '0';
+                        error_led <= '1';
+                    end if;
+
+                    if selected_index = 2 then
+                        selected_index <= 3; --opened
+                        valid_led <= '1';
+                    end if;
+
+                    if selected_index = 6 then
+                        selected_index <= 7; --sucess
+                        registered <= '1';
+                    end if;
+
+                    if selected_index = 5 then
+                        selected_index <= 7; --sucess
+                        registered <= '1';
+                    end if;
                 end if;
             end if;
-        end if;
     end process;
-
-    process(selected_index)
-    begin
-        case selected_index is
-            when 0 => registered <= '0'; admin_led <= '0'; valid_led <='0'; error_led <= '0'; -- Init
-            when 1 => registered <= '0'; admin_led <= '0'; valid_led <='0'; error_led <= '0'; -- Evaluate PassWord 
-            when 2 => registered <= '0'; admin_led <= '0'; valid_led <='1'; error_led <= '0'; -- Sucess Open
-            when 3 => registered <= '0'; admin_led <= '0'; valid_led <='1'; error_led <= '0'; -- Opened
-            when 4 => registered <= '0'; admin_led <= '0'; valid_led <='0'; error_led <= '1'; -- Blocked
-            when 5 => registered <= '0'; admin_led <= '1'; valid_led <='1'; error_led <= '0'; isLogged <= 1; -- Add Uuser
-            when 6 => registered <= '0'; admin_led <= '1'; valid_led <='1'; error_led <= '0'; isLogged <= 1; -- Remove User
-            when 7 => registered <= '1'; admin_led <= '1'; valid_led <='1'; error_led <= '0'; isLogged <= 1; -- Success Config
-            when others => null;
 end Behavioral;
