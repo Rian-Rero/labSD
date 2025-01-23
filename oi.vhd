@@ -29,7 +29,7 @@ architecture Behavioral of smartLocker is
   );
 
   -- Estados do sistema
-  type estado_type is (IDLE, CONFIG, VERIFY_ADMIN, VERIFY_PASS, SUCCESS, ERROR, ADD_USER, REMOVE_USER, BLOCKED);
+  type estado_type is (IDLE, CFG, VERIFY_ADMIN, VERIFY_PASS, SUCCESS, ERROR, ADD_USER, REMOVE_USER, BLOCKED);
   signal estado_atual, estado_proximo : estado_type;
 
   signal is_match        : boolean := false;
@@ -52,6 +52,22 @@ architecture Behavioral of smartLocker is
       when 6      => return "0000010"; -- Exibe '6'
       when 7      => return "1111000"; -- Exibe '7'
       when others => return "1111111"; -- Desligado
+    end case;
+  end function;
+  -- Função para mapear estados a índices inteiros
+  function estado_para_indice(estado : estado_type) return integer is
+  begin
+    case estado is
+      when IDLE         => return 0;
+      when VERIFY_PASS  => return 1;
+      when SUCCESS      => return 2;
+      when VERIFY_ADMIN => return 3;
+      when CFG          => return 4;
+      when ADD_USER     => return 5;
+      when REMOVE_USER  => return 6;
+      when ERROR        => return 7;
+      when BLOCKED      => return 8;
+      when others       => return 0; -- Default
     end case;
   end function;
 begin
@@ -140,7 +156,56 @@ begin
         isLogged       <= '0';
         blocked        <= '0';
         estado_proximo <= IDLE;
+      when CFG =>
+        valid_led  <= '0';
+        error_led  <= '0';
+        registered <= '0';
+        isLogged   <= '1';
+        if ADD_USER = '1' then
+          estado_proximo <= ADD_USER;
+        else
+          estado_proximo <= REMOVE_USER;
+        end if;
+      when ADD_USER => -- Adiciona uma nova senha ao array user_senhas
+        for i in 0 to 3 loop
+          if user_senhas(i) = "00000000" then
+            user_senhas(i)  <= pass;
+            registered      <= '1';
+            valid_led       <= '1';
+            error_led       <= '0';
+            isLogged        <= '0';
+            estado_proximo  <= IDLE;
+            is_admin_Logged <= false;
+            exit; -- Sai do loop após adicionar a senha
+          else
+            estado_proximo <= ERROR;
 
+          end if;
+        end loop;
+      when REMOVE_USER => -- Remove a senha de usuário
+        for i in 0 to 3 loop
+          if user_senhas(i) = pass then
+            user_senhas(i)  <= "00000000";
+            registered      <= '0';
+            valid_led       <= '1';
+            error_led       <= '0';
+            isLogged        <= '0';
+            is_admin_Logged <= false;
+            is_match        <= false;
+            estado_proximo  <= IDLE;
+            exit; -- Sai do loop após remover a senha
+          else
+            estado_proximo <= ERROR;
+          end if;
+        end loop;
+
+      when ERROR =>
+        error_led      <= '1';
+        valid_led      <= '0';
+        registered     <= '0';
+        isLogged       <= '0';
+        blocked        <= '0';
+        estado_proximo <= IDLE;
       when BLOCKED =>
         blocked    <= '1';
         valid_led  <= '0';
@@ -150,37 +215,10 @@ begin
         if not is_blocked then
           estado_proximo <= IDLE;
         end if;
-
-      when ERROR =>
-        error_led      <= '1';
-        valid_led      <= '0';
-        registered     <= '0';
-        isLogged       <= '0';
-        blocked        <= '0';
-        estado_proximo <= IDLE;
-
       when others =>
         estado_proximo <= IDLE;
     end case;
   end process;
-
-  -- Função para mapear estados a índices inteiros
-  function estado_para_indice(estado : estado_type) return integer is
-  begin
-    case estado is
-      when IDLE         => return 0;
-      when VERIFY_PASS  => return 1;
-      when SUCCESS      => return 2;
-      when VERIFY_ADMIN => return 3;
-      when CONFIG       => return 4;
-      when ADD_USER     => return 5;
-      when REMOVE_USER  => return 6;
-      when ERROR        => return 7;
-      when others       => return 0; -- Default
-    end case;
-  end function;
-
-begin
   -- Atualiza o visor de 7 segmentos com base no estado atual
   hex_display <= decode_to_7seg(estado_para_indice(estado_atual));
 
