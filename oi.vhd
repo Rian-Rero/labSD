@@ -29,7 +29,7 @@ architecture Behavioral of smartLocker is
   );
 
   -- Estados do sistema
-  type estado_type is (IDLE, CFG, VERIFY_ADMIN, VERIFY_PASS, SUCCESS, ERROR, ADD_USER, REMOVE_USER, BLOCKED);
+  type estado_type is (IDLE, CFG, VERIFY_ADMIN, VERIFY_PASS, SUCCESS, ERROR, ADD_USR, REMOVE_USER, BLK);
   signal estado_atual, estado_proximo : estado_type;
 
   signal is_match        : boolean := false;
@@ -63,10 +63,10 @@ architecture Behavioral of smartLocker is
       when SUCCESS      => return 2;
       when VERIFY_ADMIN => return 3;
       when CFG          => return 4;
-      when ADD_USER     => return 5;
+      when ADD_USR      => return 5;
       when REMOVE_USER  => return 6;
       when ERROR        => return 7;
-      when BLOCKED      => return 8;
+      when BLK          => return 8;
       when others       => return 0; -- Default
     end case;
   end function;
@@ -114,7 +114,7 @@ begin
 
       when VERIFY_PASS =>
         if is_blocked then
-          estado_proximo <= BLOCKED;
+          estado_proximo <= BLK;
         else
           error_led <= '0';
           is_match  <= false;
@@ -142,7 +142,7 @@ begin
             if invalid_attempts = 3 then
               is_blocked     <= true;
               block_timer    <= 5; -- Define o contador para 5 ciclos
-              estado_proximo <= BLOCKED;
+              estado_proximo <= BLK;
             else
               estado_proximo <= ERROR;
             end if;
@@ -161,12 +161,12 @@ begin
         error_led  <= '0';
         registered <= '0';
         isLogged   <= '1';
-        if ADD_USER = '1' then
-          estado_proximo <= ADD_USER;
+        if ADD_USR = '1' then
+          estado_proximo <= ADD_USR;
         else
           estado_proximo <= REMOVE_USER;
         end if;
-      when ADD_USER => -- Adiciona uma nova senha ao array user_senhas
+      when ADD_USR => -- Adiciona uma nova senha ao array user_senhas
         for i in 0 to 3 loop
           if user_senhas(i) = "00000000" then
             user_senhas(i)  <= pass;
@@ -206,7 +206,7 @@ begin
         isLogged       <= '0';
         blocked        <= '0';
         estado_proximo <= IDLE;
-      when BLOCKED =>
+      when BLK =>
         blocked    <= '1';
         valid_led  <= '0';
         error_led  <= '0';
