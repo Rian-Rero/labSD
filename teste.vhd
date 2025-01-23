@@ -1,0 +1,112 @@
+library IEEE;
+use IEEE.STD_LOGIC_1164.all;
+use IEEE.STD_LOGIC_ARITH.all;
+use IEEE.STD_LOGIC_UNSIGNED.all;
+
+entity smartLocker is
+  port (
+    clock, reset, config, add_user                        : in std_logic;
+    pass                                                  : in std_logic_vector (7 downto 0);
+    admin_led, valid_led, error_led, registered, isLogged : out std_logic
+  );
+end smartLocker;
+
+architecture Behavioral of smartLocker is
+  -- Tipo para os arrays de senhas
+  type senha_array is array (0 to 5) of std_logic_vector(7 downto 0);
+  type users_senha_array is array (0 to 3) of std_logic_vector(7 downto 0);
+
+  -- Array de senhas de administradores
+  constant admin_senhas : senha_array := (
+  "01010101", -- senha 1 (8 bits)
+  "01100001", -- senha 2 (8 bits)
+  others => "00000000" -- Preenche os demais elementos
+  );
+
+  -- Array para as senhas de usuários
+  signal user_senhas : users_senha_array := (
+  others => "00000000" -- Inicializa com valores padrão
+  );
+
+  -- Estados do sistema
+  type estado_type is (IDLE, CONFIG, VERIFY_ADMIN, VERIFY_PASS, SUCCESS, ERROR, ADD_USER, REMOVE_USER);
+  signal estado_atual, estado_proximo : estado_type;
+
+  signal is_match        : boolean := false;
+  signal is_admin_logged : boolean := false;
+
+  -- Tabela de decodificação para o display de 7 segmentos
+  function decode_to_7seg(value : integer range 0 to 7) return std_logic_vector is
+  begin
+    case value is
+      when 0      => return "1000000"; -- Exibe '0'
+      when 1      => return "1111001"; -- Exibe '1'
+      when 2      => return "0100100"; -- Exibe '2'
+      when 3      => return "0110000"; -- Exibe '3'
+      when 4      => return "0011001"; -- Exibe '4'
+      when 5      => return "0010010"; -- Exibe '5'
+      when 6      => return "0000010"; -- Exibe '6'
+      when 7      => return "1111000"; -- Exibe '7'
+      when others => return "1111111"; -- Desligado
+    end case;
+  end function;
+
+begin
+  process (clock, reset)
+  begin
+    if rising_edge(clock) then
+      if reset = '1' then
+        estado_atual <= IDLE;
+        admin_led    <= '0';
+        valid_led    <= '0';
+        error_led    <= '0';
+        registered   <= '0';
+        isLogged     <= '0';
+        user_senhas  <= (others => "00000000");
+      else
+        estado_atual <= estado_proximo;
+      end if;
+    end if;
+  end process;
+
+  process (estado_atual, pass, config, add_user)
+  begin
+    case estado_atual is
+      when IDLE =>
+        if config = '1' then
+          estado_proximo <= CONFIG;
+        else
+          estado_proximo <= VERIFY_PASS;
+        end if;
+      when CONFIG =>
+        if ADD_USER = '1' then
+          estado_proximo <= ADD_USER;
+        else
+          estado_proximo <= REMOVE_USER;
+        end if;
+      when VERIFY_ADMIN =>
+        -- Verifica se a senha é de administrador
+        -- Se for, então ir para a etapa de adição/remover ou verificação de usuário
+
+      when VERIFY_PASS =>
+        -- Verifica se a senha corresponde a um usuário
+
+      when SUCCESS =>
+        -- Mostra LED de sucesso, sistema está desbloqueado
+
+      when ERROR =>
+        -- Mostra LED de erro, senha não válida
+
+      when ADD_USER =>
+        -- Adiciona o usuário ao banco de senhas
+
+      when REMOVE_USER =>
+        -- Remove a senha de usuário
+
+      when others =>
+        estado_proximo <= IDLE;
+    end case;
+  end process;
+  -- Atualiza o visor de 7 segmentos com o valor de selected_index
+  hex_display <= decode_to_7seg(selected_index);
+end Behavioral;
