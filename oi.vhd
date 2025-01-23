@@ -77,18 +77,19 @@ begin
     if rising_edge(clock) then
       if reset = '1' then
         estado_atual <= IDLE;
+        block_timer  <= 0; -- Inicializa o contador no reset
       else
-        if is_blocked and block_timer > 0 then
-          block_timer <= block_timer - 1;
-          if block_timer = 1 then
-            is_blocked <= false; -- Desbloqueia após 5 ciclos
+        if is_blocked then
+          if block_timer > 0 then
+            block_timer <= block_timer - 1; -- Decrementa o contador
+          else
+            is_blocked <= false; -- Desbloqueia quando o contador atinge 0
           end if;
         end if;
         estado_atual <= estado_proximo;
       end if;
     end if;
   end process;
-
   process (estado_atual, pass, config, add_user)
   begin
     case estado_atual is
@@ -135,15 +136,14 @@ begin
             error_led        <= '1';
             invalid_attempts <= invalid_attempts + 1;
             if invalid_attempts = 3 then
-              is_blocked     <= true;
-              block_timer    <= 5; -- Define o contador para 5 ciclos
+              is_blocked     <= true; -- Ativa bloqueio
+              block_timer    <= 5; -- Define contador no próximo ciclo
               estado_proximo <= BLK;
             else
               estado_proximo <= ERROR;
             end if;
           end if;
         end if;
-
       when SUCCESS =>
         valid_led      <= '1';
         error_led      <= '0';
