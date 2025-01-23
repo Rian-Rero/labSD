@@ -7,7 +7,8 @@ entity smartLocker is
   port (
     clock, reset, config, add_user                      : in std_logic;
     pass                                                : in std_logic_vector (7 downto 0);
-    valid_led, error_led, registered, isLogged, blocked : out std_logic
+    valid_led, error_led, registered, isLogged, blocked : out std_logic;
+    hex_display                                         : out std_logic_vector (6 downto 0)
   );
 end smartLocker;
 
@@ -75,16 +76,7 @@ begin
   begin
     if rising_edge(clock) then
       if reset = '1' then
-        estado_atual     <= IDLE;
-        valid_led        <= '0';
-        error_led        <= '0';
-        registered       <= '0';
-        isLogged         <= '0';
-        blocked          <= '0';
-        invalid_attempts <= 0;
-        block_timer      <= 0;
-        is_blocked       <= false;
-        user_senhas      <= (others => "00000000");
+        estado_atual <= IDLE;
       else
         if is_blocked and block_timer > 0 then
           block_timer <= block_timer - 1;
@@ -101,11 +93,14 @@ begin
   begin
     case estado_atual is
       when IDLE =>
-        valid_led  <= '0';
-        error_led  <= '0';
-        registered <= '0';
-        isLogged   <= '0';
-        blocked    <= '0';
+        valid_led        <= '0';
+        error_led        <= '0';
+        registered       <= '0';
+        isLogged         <= '0';
+        blocked          <= '0';
+        invalid_attempts <= 0;
+        block_timer      <= 0;
+        is_blocked       <= false;
         if config = '1' then
           estado_proximo <= VERIFY_ADMIN;
         else
@@ -161,7 +156,7 @@ begin
         error_led  <= '0';
         registered <= '0';
         isLogged   <= '1';
-        if ADD_USR = '1' then
+        if add_user = '1' then
           estado_proximo <= ADD_USR;
         else
           estado_proximo <= REMOVE_USER;
