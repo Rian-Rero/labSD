@@ -5,9 +5,9 @@ use IEEE.STD_LOGIC_UNSIGNED.all;
 
 entity smartLocker is
   port (
-    clock, reset, config, add_user                        : in std_logic;
-    pass                                                  : in std_logic_vector (7 downto 0);
-    admin_led, valid_led, error_led, registered, isLogged : out std_logic
+    clock, reset, config, add_user             : in std_logic;
+    pass                                       : in std_logic_vector (7 downto 0);
+    valid_led, error_led, registered, isLogged : out std_logic
   );
 end smartLocker;
 
@@ -57,7 +57,6 @@ begin
     if rising_edge(clock) then
       if reset = '1' then
         estado_atual <= IDLE;
-        admin_led    <= '0';
         valid_led    <= '0';
         error_led    <= '0';
         registered   <= '0';
@@ -72,38 +71,104 @@ begin
   process (estado_atual, pass, config, add_user)
   begin
     case estado_atual is
-      when IDLE =>
+      when IDLE => -- Estado inicial
+        valid_led  <= '0';
+        error_led  <= '0';
+        registered <= '0';
+        isLogged   <= '0';
         if config = '1' then
-          estado_proximo <= CONFIG;
+          estado_proximo <= VERIFY_ADMIN;
         else
           estado_proximo <= VERIFY_PASS;
         end if;
-      when VERIFY_PASS =>
-        -- Verifica se a senha corresponde a um usuário
+      when VERIFY_PASS => -- Verifica se a senha corresponde a um usuário
+        error_led <= '0';
+        for i in 0 to 1 loop
+          if pass = admin_senhas(i) then
+            is_match       <= true;
+            estado_proximo <= SUCCESS;
+            exit;
+          else
+            is_match  <= false;
+            error_led <= '1';
+          end if;
+        end loop;
+        if not is_match then
+          for i in 0 to 3 loop
+            if pass = user_senhas(i) then
+              is_match       <= true;
+              estado_proximo <= SUCCESS;
+            else
+              is_match  <= false;
+              error_led <= '1';
+              exit;
+            end if;
+          end loop;
+        end if;
+
       when SUCCESS =>
         -- Mostra LED de sucesso, sistema está desbloqueado
-      when ERROR =>
-        -- Mostra LED de erro, senha não válida
-
+        valid_led      <= '1';
+        error_led      <= '0';
+        registered     <= '0';
+        isLogged       <= '0';
+        estado_proximo <= IDLE;
       when VERIFY_ADMIN =>
-
+        if pass = admin_senhas(0) or pass = admin_senhas(1) then
+          is_admin_logged <= true;
+          estado_proximo  <= CONFIG;
+        else
+          estado_proximo <= ERROR;
+        end if;
       when CONFIG =>
-        -- Verifica se a senha é de administrador
-        -- Se for, então ir para a etapa de adição/remover ou verificação de usuário
+        valid_led  <= '0';
+        error_led  <= '0';
+        registered <= '0';
+        isLogged   <= '1';
         if ADD_USER = '1' then
           estado_proximo <= ADD_USER;
         else
           estado_proximo <= REMOVE_USER;
         end if;
 
-      when ADD_USER =>
-        -- Adiciona o usuário ao banco de senhas
+      when ADD_USER => -- Adiciona uma nova senha ao array user_senhas
+        for i in 0 to 3 loop
+          if user_senhas(i) = "00000000" then
+            user_senhas(i)  <= pass;
+            registered      <= '1';
+            valid_led       <= '1';
+            error_led       <= '0';
+            isLogged        <= '0';
+            estado_proximo  <= IDLE;
+            is_admin_Logged <= false;
+            exit; -- Sai do loop após adicionar a senha
+          else
+            estado_proximo <= ERROR;
 
-      when REMOVE_USER =>
-        -- Remove a senha de usuário
+          end if;
+        end loop;
+      when REMOVE_USER => -- Remove a senha de usuário
+        for i in 0 to 3 loop
+          if user_senhas(i) = pass then
+            user_senhas(i)  <= "00000000";
+            registered      <= '0';
+            valid_led       <= '1';
+            error_led       <= '0';
+            isLogged        <= '0';
+            is_admin_Logged <= false;
+            is_match        <= false;
+            estado_proximo  <= IDLE;
+            exit; -- Sai do loop após remover a senha
+          else
+            estado_proximo <= ERROR;
+          end if;
+        end loop;
       when ERROR =>
-        -- Mostra LED de erro, senha não válida
-
+        error_led      <= '1';
+        valid_led      <= '0';
+        registered     <= '0';
+        isLogged       <= '0';
+        estado_proximo <= IDLE;
       when others =>
         estado_proximo <= IDLE;
     end case;
@@ -114,13 +179,13 @@ begin
   begin
     case estado is
       when IDLE         => return 0;
-      when CONFIG       => return 1;
-      when VERIFY_ADMIN => return 2;
-      when VERIFY_PASS  => return 3;
-      when SUCCESS      => return 4;
-      when ERROR        => return 5;
-      when ADD_USER     => return 6;
-      when REMOVE_USER  => return 7;
+      when VERIFY_PASS  => return 1;
+      when SUCCESS      => return 2;
+      when VERIFY_ADMIN => return 3;
+      when CONFIG       => return 4;
+      when ADD_USER     => return 5;
+      when REMOVE_USER  => return 6;
+      when ERROR        => return 7;
       when others       => return 0; -- Default
     end case;
   end function;
