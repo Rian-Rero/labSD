@@ -55,6 +55,7 @@ architecture Behavioral of smartLocker is
       when others => return "1111111"; -- Desligado
     end case;
   end function;
+
   -- Função para mapear estados a índices inteiros
   function estado_para_indice(estado : estado_type) return integer is
   begin
@@ -71,14 +72,18 @@ architecture Behavioral of smartLocker is
       when others       => return 0; -- Default
     end case;
   end function;
+
 begin
   process (clock, reset)
   begin
     if rising_edge(clock) then
       if reset = '1' then
-        estado_atual <= IDLE;
-        block_timer  <= 0; -- Inicializa o contador no reset
+        estado_atual     <= IDLE;
+        block_timer      <= 0;
+        is_blocked       <= false;
+        invalid_attempts <= 0; -- Inicializa o contador
       else
+        -- Gerenciar bloqueio
         if is_blocked then
           if block_timer > 0 then
             block_timer <= block_timer - 1; -- Decrementa o contador
@@ -86,22 +91,36 @@ begin
             is_blocked <= false; -- Desbloqueia quando o contador atinge 0
           end if;
         end if;
+
+        -- Atualizar contador de tentativas inválidas
+        if estado_atual = VERIFY_PASS or estado_atual = VERIFY_ADMIN then
+          if not is_match then
+            invalid_attempts <= invalid_attempts + 1;
+            if invalid_attempts = 3 then
+              is_blocked  <= true;
+              block_timer <= 5; -- Define o bloqueio
+            end if;
+          else
+            invalid_attempts <= 0; -- Reseta em caso de sucesso
+          end if;
+        end if;
+
         estado_atual <= estado_proximo;
       end if;
     end if;
   end process;
+
+  -- Processo combinacional completo
   process (estado_atual, pass, config, add_user)
   begin
     case estado_atual is
       when IDLE =>
-        valid_led        <= '0';
-        error_led        <= '0';
-        registered       <= '0';
-        isLogged         <= '0';
-        blocked          <= '0';
-        invalid_attempts <= 0;
-        block_timer      <= 0;
-        is_blocked       <= false;
+        valid_led  <= '0';
+        error_led  <= '0';
+        registered <= '0';
+        isLogged   <= '0';
+        blocked    <= '0';
+
         if config = '1' then
           estado_proximo <= VERIFY_ADMIN;
         else
@@ -114,36 +133,102 @@ begin
         else
           error_led <= '0';
           is_match  <= false;
+
+          -- Verificar senha de administrador
           for i in 0 to 1 loop
             if pass = admin_senhas(i) then
-              is_match         <= true;
-              estado_proximo   <= SUCCESS;
-              invalid_attempts <= 0; -- Reseta tentativas inválidas
+              is_match       <= true;
+              estado_proximo <= SUCCESS;
               exit;
             end if;
           end loop;
+
+          -- Verificar senha de usuário
           if not is_match then
             for i in 0 to 3 loop
               if pass = user_senhas(i) then
-                is_match         <= true;
-                estado_proximo   <= SUCCESS;
-                invalid_attempts <= 0; -- Reseta tentativas inválidas
+                is_match       <= true;
+                estado_proximo <= SUCCESS;
                 exit;
               end if;
             end loop;
           end if;
+
+          -- Gerenciar falha
           if not is_match then
-            error_led        <= '1';
-            invalid_attempts <= invalid_attempts + 1;
-            if invalid_attempts = 3 then
-              is_blocked     <= true; -- Ativa bloqueio
-              block_timer    <= 5; -- Define contador no próximo ciclo
-              estado_proximo <= BLK;
-            else
-              estado_proximo <= ERROR;
-            end if;
+            error_led      <= '1';
+            estado_proximo <= ERROR;
           end if;
         end if;
+
+      when VERIFY_ADMIN =>
+        if is_blocked then
+          estado_proximo <= BLK;
+        else
+          is_match <= false;
+
+          -- Verificar senhas de administrador
+          for i in 0 to 1 loop
+            if pass = admin_senhas(i) then
+              is_match       <= true;
+              estado_proximo <= CFG;
+              exit;
+            end if;
+          end loop;
+
+          if not is_match then
+            error_led      <= '1';
+            estado_proximo <= ERROR;
+          end if;
+        end if;
+
+      when CFG =>
+        valid_led <= '0';
+        error_led <= '0';
+        if add_user = '1' then
+          estado_proximo <= ADD_USR;
+        else
+          estado_proximo <= IDLE;
+        end if;
+
+      when ADD_USR =>
+        valid_led <= '0';
+        error_led <= '0';
+
+        -- Adicionar usuário
+        for i in 0 to 3 loop
+          if user_senhas(i) = "00000000" then
+            user_senhas(i) <= pass;
+            registered     <= '1';
+            exit;
+          end if;
+        end loop;
+
+        estado_proximo <= IDLE;
+
+      when REMOVE_USER =>
+        valid_led <= '0';
+        error_led <= '0';
+
+        -- Remover usuário
+        for i in 0 to 3 loop
+          if user_senhas(i) = pass then
+            user_senhas(i) <= "00000000";
+            registered     <= '1';
+            exit;
+          end if;
+        end loop;
+
+        estado_proximo <= IDLE;
+
+      when ERROR =>
+        valid_led      <= '0';
+        error_led      <= '1';
+        registered     <= '0';
+        blocked        <= '0';
+        isLogged       <= '0';
+        estado_proximo <= IDLE;
+
       when SUCCESS =>
         valid_led      <= '1';
         error_led      <= '0';
@@ -151,70 +236,20 @@ begin
         isLogged       <= '0';
         blocked        <= '0';
         estado_proximo <= IDLE;
-      when CFG =>
-        valid_led  <= '0';
-        error_led  <= '0';
-        registered <= '0';
-        isLogged   <= '1';
-        if add_user = '1' then
-          estado_proximo <= ADD_USR;
-        else
-          estado_proximo <= REMOVE_USER;
-        end if;
-      when ADD_USR => -- Adiciona uma nova senha ao array user_senhas
-        for i in 0 to 3 loop
-          if user_senhas(i) = "00000000" then
-            user_senhas(i)  <= pass;
-            registered      <= '1';
-            valid_led       <= '1';
-            error_led       <= '0';
-            isLogged        <= '0';
-            estado_proximo  <= IDLE;
-            is_admin_Logged <= false;
-            exit; -- Sai do loop após adicionar a senha
-          else
-            estado_proximo <= ERROR;
 
-          end if;
-        end loop;
-      when REMOVE_USER => -- Remove a senha de usuário
-        for i in 0 to 3 loop
-          if user_senhas(i) = pass then
-            user_senhas(i)  <= "00000000";
-            registered      <= '0';
-            valid_led       <= '1';
-            error_led       <= '0';
-            isLogged        <= '0';
-            is_admin_Logged <= false;
-            is_match        <= false;
-            estado_proximo  <= IDLE;
-            exit; -- Sai do loop após remover a senha
-          else
-            estado_proximo <= ERROR;
-          end if;
-        end loop;
-
-      when ERROR =>
-        error_led      <= '1';
+      when BLK =>
         valid_led      <= '0';
+        error_led      <= '1';
+        blocked        <= '1';
         registered     <= '0';
         isLogged       <= '0';
-        blocked        <= '0';
         estado_proximo <= IDLE;
-      when BLK =>
-        blocked    <= '1';
-        valid_led  <= '0';
-        error_led  <= '0';
-        registered <= '0';
-        isLogged   <= '0';
-        if not is_blocked then
-          estado_proximo <= IDLE;
-        end if;
+
       when others =>
         estado_proximo <= IDLE;
     end case;
   end process;
+
   -- Atualiza o visor de 7 segmentos com base no estado atual
   hex_display <= decode_to_7seg(estado_para_indice(estado_atual));
-
 end Behavioral;
