@@ -145,6 +145,10 @@ begin
             if unsigned(pass) = unsigned(admin_senhas(i)) then
               match_found    <= true;
               valid_led      <= '1';
+              registered     <= '0';
+              isLogged       <= '0';
+              blocked        <= '0';
+              error_led      <= '0';
               estado_proximo <= SUCCESS;
               exit;
             end if;
@@ -171,12 +175,18 @@ begin
               estado_proximo <= CFG;
               error_led      <= '0';
               isLogged       <= '1';
+              registered     <= '0';
+              blocked        <= '0';
+              valid_led      <= '0';
               exit;
             end if;
             if i = 1 then
               if not admin_match then
                 error_led      <= '1';
                 isLogged       <= '0';
+                registered     <= '0';
+                blocked        <= '0';
+                valid_led      <= '0';
                 estado_proximo <= ERROR;
               end if;
             end if;
@@ -196,8 +206,11 @@ begin
         end if;
 
       when ADD_USR =>
-        valid_led <= '0';
-        error_led <= '0';
+        valid_led  <= '0';
+        error_led  <= '0';
+        isLogged   <= '1';
+        blocked    <= '0';
+        registered <= '0';
 
         -- Adicionar usuário
         for i in 0 to 5 loop
@@ -209,8 +222,11 @@ begin
           end if;
         end loop;
       when REMOVE_USER =>
-        valid_led <= '0';
-        error_led <= '0';
+        valid_led  <= '0';
+        error_led  <= '0';
+        isLogged   <= '1';
+        registered <= '0';
+        blocked    <= '0';
 
         -- Remover usuário
         for i in 0 to 5 loop
