@@ -5,10 +5,10 @@ use ieee.numeric_std.all;
 
 entity smartLocker is
   port (
-    clock, reset, config, add_user                             : in std_logic;
-    pass                                                       : in std_logic_vector (7 downto 0);
-    valid_led, error_led, registered, isLogged, blocked, debug : out std_logic;
-    hex_display                                                : out std_logic_vector (6 downto 0)
+    clock, reset, config, add_user                      : in std_logic;
+    pass                                                : in std_logic_vector (7 downto 0);
+    valid_led, error_led, registered, isLogged, blocked : out std_logic;
+    hex_display                                         : out std_logic_vector (6 downto 0)
   );
 end smartLocker;
 
@@ -123,7 +123,6 @@ begin
         registered  <= '0';
         isLogged    <= '0';
         blocked     <= '0';
-        debug       <= '0';
         match_found <= false; -- Resetar a cada ciclo
         admin_match <= false; -- Resetar a cada ciclo
         if config = '1' then
