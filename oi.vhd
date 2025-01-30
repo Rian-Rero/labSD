@@ -14,21 +14,17 @@ end smartLocker;
 
 architecture Behavioral of smartLocker is
   -- Tipo para os arrays de senhas
-  type senha_array is array (0 to 1) of std_logic_vector(7 downto 0);
+  type senha_array is array (0 to 5) of std_logic_vector(7 downto 0);
   type users_senha_array is array (0 to 3) of std_logic_vector(7 downto 0);
 
   -- Array de senhas de administradores
-  constant admin_senhas : senha_array := (
+  shared variable admin_senhas : senha_array := (
   "01010101", -- senha 1 (8 bits)
-  "01100001" -- senha 2 (8 bits)
-  );
-
-  -- Array para as senhas de usuários
-  signal user_senhas : users_senha_array := (
-  "00000001",
-  "00000001",
-  "00000001",
-  "00000001"
+  "01100001", -- senha 2 (8 bits)
+  "00000000",
+  "00000000",
+  "00000000",
+  "00000000"
   );
 
   -- Estados do sistema
@@ -39,8 +35,8 @@ architecture Behavioral of smartLocker is
   signal block_timer      : integer := 0; -- Contador para o bloqueio de 5 ciclos de clock
   signal is_blocked       : boolean := false; -- Indica se o sistema está bloqueado
 
-  signal match_found : boolean := false; -- Substituto para variável
-  signal admin_match : boolean := false; -- Substituto para variável
+  signal match_found : boolean := false;
+  signal admin_match : boolean := false;
 
   -- Tabela de decodificação para o display de 7 segmentos
   function decode_to_7seg(value : integer range 0 to 9) return std_logic_vector is
@@ -60,7 +56,7 @@ architecture Behavioral of smartLocker is
     end case;
   end function;
 
-  -- Função para mapear estados a índices inteiros
+  -- Função para mapear estados a í­ndices inteiros
   function estado_para_indice(estado : estado_type) return integer is
   begin
     case estado is
@@ -115,19 +111,21 @@ begin
   end process;
 
   -- Processo combinacional completo
-  process (estado_atual, pass, config, add_user, is_blocked)
+  process (clock, estado_atual, pass, config, add_user, is_blocked)
   begin
     match_found <= false; -- Resetar a cada ciclo
     admin_match <= false; -- Resetar a cada ciclo
 
     case estado_atual is
       when IDLE =>
-        valid_led  <= '0';
-        error_led  <= '0';
-        registered <= '0';
-        isLogged   <= '0';
-        blocked    <= '0';
-        debug      <= '0';
+        valid_led   <= '0';
+        error_led   <= '0';
+        registered  <= '0';
+        isLogged    <= '0';
+        blocked     <= '0';
+        debug       <= '0';
+        match_found <= false; -- Resetar a cada ciclo
+        admin_match <= false; -- Resetar a cada ciclo
         if config = '1' then
           estado_proximo <= VERIFY_ADMIN;
         else
@@ -143,34 +141,24 @@ begin
           registered <= '0';
           isLogged   <= '0';
           blocked    <= '0';
-
-          -- Verificar senha de administrador
-          for i in 0 to 1 loop
-            if pass = admin_senhas(i) then
+          -- Verificar senha
+          for i in 0 to 5 loop
+            if unsigned(pass) = unsigned(admin_senhas(i)) then
               match_found    <= true;
               valid_led      <= '1';
               estado_proximo <= SUCCESS;
               exit;
             end if;
+
+            if i = 5 then
+              -- Se nenhuma correspondência for encontrada
+              if not match_found then
+                estado_proximo <= ERROR;
+
+              end if;
+            end if;
           end loop;
 
-          -- Verificar senha de usuário apenas se não for admin
-          if not match_found then
-            for i in 0 to 3 loop
-              if pass = user_senhas(i) then
-                match_found    <= true;
-                valid_led      <= '1';
-                estado_proximo <= SUCCESS;
-                exit;
-              end if;
-            end loop;
-          end if;
-
-          -- Se nenhuma correspondência for encontrada
-          if not match_found then
-            error_led      <= '1';
-            estado_proximo <= ERROR;
-          end if;
         end if;
 
       when VERIFY_ADMIN =>
@@ -179,20 +167,21 @@ begin
         else
           -- Verificar senhas de administrador
           for i in 0 to 1 loop
-            if pass = admin_senhas(i) then
+            if unsigned(pass) = unsigned(admin_senhas(i)) then
               admin_match    <= true;
               estado_proximo <= CFG;
               error_led      <= '0';
               isLogged       <= '1';
               exit;
             end if;
+            if i = 1 then
+              if not admin_match then
+                error_led      <= '1';
+                isLogged       <= '0';
+                estado_proximo <= ERROR;
+              end if;
+            end if;
           end loop;
-
-          if not admin_match then
-            error_led      <= '1';
-            isLogged       <= '0';
-            estado_proximo <= ERROR;
-          end if;
         end if;
 
       when CFG =>
@@ -204,7 +193,7 @@ begin
         if add_user = '1' then
           estado_proximo <= ADD_USR;
         else
-          estado_proximo <= IDLE;
+          estado_proximo <= REMOVE_USER;
         end if;
 
       when ADD_USR =>
@@ -212,31 +201,27 @@ begin
         error_led <= '0';
 
         -- Adicionar usuário
-        for i in 0 to 3 loop
-          if user_senhas(i) = "00000000" then
-            user_senhas(i) <= pass;
+        for i in 0 to 5 loop
+          if admin_senhas(i) = "00000000" then
+            admin_senhas(i) := pass;
             registered     <= '1';
+            estado_proximo <= SUCCESS;
             exit;
           end if;
         end loop;
-
-        estado_proximo <= IDLE;
-
       when REMOVE_USER =>
         valid_led <= '0';
         error_led <= '0';
 
         -- Remover usuário
-        for i in 0 to 3 loop
-          if user_senhas(i) = pass then
-            user_senhas(i) <= "00000000";
-            registered     <= '1';
+        for i in 0 to 5 loop
+          if admin_senhas(i) = pass then
+            admin_senhas(i) := "00000000";
+            valid_led      <= '1';
+            estado_proximo <= SUCCESS;
             exit;
           end if;
         end loop;
-
-        estado_proximo <= IDLE;
-
       when ERROR =>
         valid_led      <= '0';
         error_led      <= '1';
@@ -261,13 +246,14 @@ begin
         isLogged   <= '0';
         if not is_blocked then
           estado_proximo <= IDLE;
+        else
+          estado_proximo <= BLK;
         end if;
 
       when others =>
         estado_proximo <= IDLE;
     end case;
   end process;
-
   hex_display <= decode_to_7seg(estado_para_indice(estado_atual));
 
 end Behavioral;
